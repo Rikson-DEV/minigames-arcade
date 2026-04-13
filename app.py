@@ -15,74 +15,88 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "minigames.db")
 
 def criar_banco_dados():
     """Cria o banco de dados com as tabelas necessárias"""
-    conexao = sqlite3.connect(DB_PATH)
-    cursor = conexao.cursor()
-    
-    # Tabela de usuários
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            senha TEXT NOT NULL,
-            tipo_usuario TEXT DEFAULT 'comum',
-            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    # Adicionar coluna tipo_usuario se não existir (migration)
     try:
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN tipo_usuario TEXT DEFAULT 'comum'")
-    except sqlite3.OperationalError:
-        pass  # Coluna já existe
-    
-    # Tabela de scores
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS scores (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER,
-            jogo TEXT NOT NULL,
-            pontuacao INTEGER NOT NULL,
-            dificuldade_inicial INTEGER NOT NULL,
-            dificuldade_final INTEGER NOT NULL,
-            data_jogo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-        )
-    """)
-    
-    conexao.commit()
-    
-    # Criar/atualizar usuários admin
-    _criar_admins_padrao(conexao, cursor)
-    
-    conexao.close()
+        conexao = sqlite3.connect(DB_PATH)
+        cursor = conexao.cursor()
+        
+        # Tabela de usuários
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                senha TEXT NOT NULL,
+                tipo_usuario TEXT DEFAULT 'comum',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Adicionar coluna tipo_usuario se não existir (migration)
+        try:
+            cursor.execute("ALTER TABLE usuarios ADD COLUMN tipo_usuario TEXT DEFAULT 'comum'")
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        
+        # Tabela de scores
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER,
+                jogo TEXT NOT NULL,
+                pontuacao INTEGER NOT NULL,
+                dificuldade_inicial INTEGER NOT NULL,
+                dificuldade_final INTEGER NOT NULL,
+                data_jogo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+            )
+        """)
+        
+        conexao.commit()
+        print(f"✓ Banco de dados criado em: {DB_PATH}")
+        
+        # Criar/atualizar usuários admin
+        _criar_admins_padrao(conexao, cursor)
+        
+        conexao.close()
+        print("✓ Tabelas criadas e admins configurados")
+    except Exception as e:
+        print(f"❌ ERRO ao criar banco de dados: {e}")
+        raise
 
 def _criar_admins_padrao(conexao, cursor):
     """Cria ou atualiza usuários admin (admin e Rickstiller)"""
-    admins = [
-        ('admin', 'admin'),
-        ('Rickstiller', 'Rickstiller123!')
-    ]
-    
-    for username, senha in admins:
-        # Verificar se já existe
-        cursor.execute("SELECT id, tipo_usuario FROM usuarios WHERE username = ?", (username,))
-        usuario = cursor.fetchone()
+    try:
+        admins = [
+            ('admin', 'admin'),
+            ('Rickstiller', 'Rickstiller123!')
+        ]
         
-        if usuario:
-            # Atualizar para admin se não for
-            if usuario[1] != 'admin':
-                cursor.execute(
-                    "UPDATE usuarios SET tipo_usuario = ? WHERE username = ?",
-                    ('admin', username)
-                )
-                conexao.commit()
-        else:
-            # Criar novo admin
-            cursor.execute(
-                "INSERT INTO usuarios (username, senha, tipo_usuario) VALUES (?, ?, ?)",
-                (username, generate_password_hash(senha), 'admin')
-            )
-            conexao.commit()
+        for username, senha in admins:
+            try:
+                # Verificar se já existe
+                cursor.execute("SELECT id, tipo_usuario FROM usuarios WHERE username = ?", (username,))
+                usuario = cursor.fetchone()
+                
+                if usuario:
+                    # Atualizar para admin se não for
+                    if usuario[1] != 'admin':
+                        cursor.execute(
+                            "UPDATE usuarios SET tipo_usuario = ? WHERE username = ?",
+                            ('admin', username)
+                        )
+                        conexao.commit()
+                        print(f"✓ Usuário {username} atualizado para admin")
+                else:
+                    # Criar novo admin
+                    cursor.execute(
+                        "INSERT INTO usuarios (username, senha, tipo_usuario) VALUES (?, ?, ?)",
+                        (username, generate_password_hash(senha), 'admin')
+                    )
+                    conexao.commit()
+                    print(f"✓ Admin {username} criado com sucesso")
+            except Exception as e:
+                print(f"❌ Erro ao processar admin {username}: {e}")
+    except Exception as e:
+        print(f"❌ Erro ao criar admins padrão: {e}")
 
 def get_db():
     """Retorna conexão com banco de dados"""
