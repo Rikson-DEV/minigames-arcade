@@ -756,6 +756,16 @@ table tbody tr:hover {
     .ranking-tabs {
         grid-template-columns: 1fr;
     }
+    
+    #gameCanvas {
+        max-width: 100%;
+        width: 100%;
+        height: auto;
+    }
+    
+    .game-area {
+        padding: 10px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -777,6 +787,76 @@ table tbody tr:hover {
     
     .btn {
         width: 100%;
+        padding: 16px;
+        font-size: 1.1em;
+    }
+    
+    .btn-auth {
+        padding: 16px;
+        font-size: 1.1em;
+    }
+    
+    /* Otimizações para mobile */
+    .diff-option {
+        padding: 15px;
+        font-size: 1.1em;
+    }
+    
+    .diff-level {
+        font-size: 1.2em;
+    }
+    
+    .diff-desc {
+        font-size: 0.85em;
+    }
+    
+    .difficulty-options {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .game-hud {
+        font-size: 0.9em;
+        gap: 10px;
+    }
+    
+    .hud-item span:last-child {
+        font-size: 1.2em;
+    }
+    
+    #gameCanvas {
+        max-width: 100%;
+        width: 100% !important;
+        height: auto !important;
+        display: block;
+    }
+    
+    .game-area {
+        padding: 5px;
+        border-radius: 8px;
+    }
+    
+    table {
+        font-size: 0.9em;
+    }
+    
+    table th, table td {
+        padding: 10px;
+    }
+    
+    .posicao {
+        width: 40px;
+    }
+    
+    /* Melhorar toque em botões */
+    button {
+        min-height: 48px;
+        min-width: 48px;
+    }
+    
+    /* Canvas mais responsivo */
+    .game-page {
+        padding: 10px;
     }
 }
 

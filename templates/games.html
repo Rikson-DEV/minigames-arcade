@@ -52,6 +52,11 @@
             </div>
         </div>
         
+        <!-- Instruções de Controle -->
+        <div id="control-instructions" style="display: none; background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 0.95em; color: #333;">
+            <strong id="instructions-text"></strong>
+        </div>
+        
         <!-- Canvas do Jogo -->
         <div id="game-area" class="game-area" style="display: none;">
             <canvas id="gameCanvas"></canvas>
@@ -97,8 +102,31 @@
             dificuldadeInicial = dificuldade;
             document.getElementById('difficulty-selector').style.display = 'none';
             document.getElementById('game-area').style.display = 'block';
+            document.getElementById('control-instructions').style.display = 'block';
             
             const jogo = localStorage.getItem('jogo_selecionado');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // Mostrar instruções baseadas no jogo e dispositivo
+            let instrucoes = '';
+            if (isMobile) {
+                if (jogo === 'snake') {
+                    instrucoes = '🐍 Snake: Deslize para controlar a direção';
+                } else if (jogo === 'pong') {
+                    instrucoes = '🏓 Pong: Deslize para cima/baixo para mover a raquete';
+                } else if (jogo === 'space-shooter') {
+                    instrucoes = '🚀 Space Shooter: Deslize para mover a nave, toque para atirar';
+                }
+            } else {
+                if (jogo === 'snake') {
+                    instrucoes = '🐍 Snake: Use setas/WASD para controlar';
+                } else if (jogo === 'pong') {
+                    instrucoes = '🏓 Pong: Mova o mouse para cima/baixo ou use setas';
+                } else if (jogo === 'space-shooter') {
+                    instrucoes = '🚀 Space Shooter: Use setas/WASD para mover, espaço para atirar';
+                }
+            }
+            document.getElementById('instructions-text').textContent = instrucoes;
             
             if (jogo === 'snake') {
                 jogoAtual = new Snake(dificuldade);

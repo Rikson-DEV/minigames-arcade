@@ -9,10 +9,57 @@ class BaseGame {
         this.rodando = false;
         this.pontuacao = 0;
         
-        // Dimensões do canvas
+        // ==================== MOBILE RESPONSIVENESS ====================
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        this.touchStartX = 0;
+        this.touchStartY = 0;
+        this.touchEndX = 0;
+        this.touchEndY = 0;
+        
+        // Dimensões do canvas - Adaptado para mobile
         const container = document.getElementById('game-area');
-        this.canvas.width = Math.min(container.offsetWidth - 40, 800);
-        this.canvas.height = 600;
+        if (this.isMobile) {
+            // Mobile: usar 90% da largura disponível
+            this.canvas.width = Math.min(container.offsetWidth - 20, window.innerWidth - 20);
+            this.canvas.height = Math.min(600, window.innerHeight - 200);
+        } else {
+            // Desktop: tamanho fixo
+            this.canvas.width = Math.min(container.offsetWidth - 40, 800);
+            this.canvas.height = 600;
+        }
+        
+        // Set canvas style para evitar distorção
+        this.canvas.style.maxWidth = '100%';
+        this.canvas.style.height = 'auto';
+        this.canvas.style.display = 'block';
+        
+        // Inicializar event listeners de touch
+        this.initializeTouchControls();
+    }
+    
+    initializeTouchControls() {
+        """Adiciona suporte para touch em mobile"""
+        if (this.isMobile) {
+            this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), false);
+            this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), false);
+            this.canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        }
+    }
+    
+    handleTouchStart(e) {
+        this.touchStartX = e.changedTouches[0].clientX;
+        this.touchStartY = e.changedTouches[0].clientY;
+    }
+    
+    handleTouchEnd(e) {
+        this.touchEndX = e.changedTouches[0].clientX;
+        this.touchEndY = e.changedTouches[0].clientY;
+        this.handleSwipe();
+    }
+    
+    handleSwipe() {
+        """Detecta direção do swipe - Implementado em subclasses"""
+        // Será sobrescrito em Snake, Pong, SpaceShooter
     }
     
     start() {
@@ -49,6 +96,29 @@ class Snake extends BaseGame {
         this.intervaloAtualizacao = 0;
         
         document.addEventListener('keydown', (e) => this.mudarDirecao(e));
+    }
+    
+    handleSwipe() {
+        """Detecta swipe no mobile e muda direção do snake"""
+        const diferencaX = this.touchEndX - this.touchStartX;
+        const diferencaY = this.touchEndY - this.touchStartY;
+        const minSwipe = 50; // Distância mínima para considerar um swipe
+        
+        if (Math.abs(diferencaX) > Math.abs(diferencaY)) {
+            // Swipe horizontal
+            if (diferencaX > minSwipe && this.direcao.x === 0) {
+                this.proximaDirecao = { x: 1, y: 0 }; // Direita
+            } else if (diferencaX < -minSwipe && this.direcao.x === 0) {
+                this.proximaDirecao = { x: -1, y: 0 }; // Esquerda
+            }
+        } else {
+            // Swipe vertical
+            if (diferencaY > minSwipe && this.direcao.y === 0) {
+                this.proximaDirecao = { x: 0, y: 1 }; // Baixo
+            } else if (diferencaY < -minSwipe && this.direcao.y === 0) {
+                this.proximaDirecao = { x: 0, y: -1 }; // Cima
+            }
+        }
     }
     
     gerarComida() {
@@ -207,6 +277,23 @@ class Pong extends BaseGame {
         document.addEventListener('keyup', (e) => {
             this.teclasPresinoadas[e.key] = false;
         });
+    }
+    
+    handleSwipe() {
+        """Detecta swipe no mobile e move paddle"""
+        const diferencaY = this.touchEndY - this.touchStartY;
+        const minSwipe = 30;
+        
+        if (diferencaY < -minSwipe) {
+            // Swipe para cima
+            this.paddleJogador.y = Math.max(0, this.paddleJogador.y - 50);
+        } else if (diferencaY > minSwipe) {
+            // Swipe para baixo
+            this.paddleJogador.y = Math.min(
+                this.canvas.height - this.paddleAltura,
+                this.paddleJogador.y + 50
+            );
+        }
     }
     
     atualizarMouse(e) {
@@ -368,6 +455,23 @@ class SpaceShooter extends BaseGame {
         document.addEventListener('keyup', (e) => {
             this.teclasPresinoadas[e.key] = false;
         });
+    }
+    
+    handleSwipe() {
+        """Detecta swipe no mobile e move nave"""
+        const diferencaX = this.touchEndX - this.touchStartX;
+        const minSwipe = 50;
+        
+        if (diferencaX < -minSwipe) {
+            // Swipe para esquerda
+            this.nave.x = Math.max(0, this.nave.x - 100);
+        } else if (diferencaX > minSwipe) {
+            // Swipe para direita
+            this.nave.x = Math.min(this.canvas.width - this.nave.largura, this.nave.x + 100);
+        }
+        
+        // Tocar na tela para atirar
+        this.atirar();
     }
     
     gerarInimigo() {
