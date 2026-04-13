@@ -148,6 +148,19 @@ def validar_forca_senha(senha):
     valida = len(erros) == 0
     return valida, erros, estrutura_forca.get(min(forca, 6))
 
+# ============ INICIALIZAR BANCO DE DADOS ============
+def inicializar_banco():
+    """Inicializa banco de dados na primeira execução"""
+    try:
+        if not os.path.exists(DB_PATH):
+            print("🗄️ Criando banco de dados...")
+        criar_banco_dados()
+    except Exception as e:
+        print(f"❌ Erro ao inicializar banco: {e}")
+
+# Chamar na inicialização do app (AGORA que criar_banco_dados() já está definida)
+inicializar_banco()
+
 @app.route('/api/auth/validar-senha', methods=['POST'])
 def validar_senha_endpoint():
     """Valida força de senha em tempo real"""
@@ -467,7 +480,6 @@ def ranking():
     return render_template('ranking.html')
 
 if __name__ == '__main__':
-    criar_banco_dados()
     print("="*60)
     print("🎮 MINIGAMES ARCADE - Sistema de Jogos")
     print("="*60)
