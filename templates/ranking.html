@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking - Minigames Arcade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="ranking-page">
+    <div class="ranking-container">
+        <div class="ranking-header">
+            <h1>🏆 RANKING</h1>
+            <button class="btn btn-secondary" onclick="voltarAoMenu()">← Menu</button>
+        </div>
+        
+        <div class="ranking-content">
+            <!-- Seletor de Jogo -->
+            <div class="ranking-tabs">
+                <button class="tab-btn active" onclick="mudarJogoRanking('snake')">🐍 Snake</button>
+                <button class="tab-btn" onclick="mudarJogoRanking('pong')">🏓 Pong</button>
+                <button class="tab-btn" onclick="mudarJogoRanking('space-shooter')">🚀 Space Shooter</button>
+            </div>
+            
+            <div class="ranking-layout">
+                <!-- Ranking Global -->
+                <div class="ranking-section">
+                    <h2>🌍 Ranking Global</h2>
+                    <table id="global-ranking">
+                        <thead>
+                            <tr>
+                                <th>Posição</th>
+                                <th>Jogador</th>
+                                <th>Melhor Score</th>
+                                <th>Partidas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="global-tbody">
+                            <tr><td colspan="4" class="loading">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Estatísticas Pessoais (se autenticado) -->
+                <div class="ranking-section" id="personal-section" style="display: none;">
+                    <h2>👤 Minhas Estatísticas</h2>
+                    <div class="stats-box">
+                        <div class="stat">
+                            <span>Melhor Score:</span>
+                            <strong id="personal-best">-</strong>
+                        </div>
+                        <div class="stat">
+                            <span>Total de Partidas:</span>
+                            <strong id="personal-total">-</strong>
+                        </div>
+                        <div class="stat">
+                            <span>Score Médio:</span>
+                            <strong id="personal-avg">-</strong>
+                        </div>
+                    </div>
+                    
+                    <h3>📊 Histórico (últimas 10)</h3>
+                    <table id="personal-ranking">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Score</th>
+                                <th>Dif. Inicial</th>
+                                <th>Dif. Final</th>
+                            </tr>
+                        </thead>
+                        <tbody id="personal-tbody">
+                            <tr><td colspan="4" class="loading">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let jogoSelecionado = 'snake';
+        let usuario = JSON.parse(localStorage.getItem('user'));
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!usuario) window.location.href = '/';
+            
+            if (usuario.modo !== 'guest') {
+                document.getElementById('personal-section').style.display = 'block';
+            }
+            
+            carregarRankings();
+        });
+        
+        function mudarJogoRanking(jogo) {
+            jogoSelecionado = jogo;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            carregarRankings();
+        }
+        
+        function carregarRankings() {
+            carregarGlobalRanking();
+            if (usuario && usuario.token) {
+                carregarPessoalStats();
+            }
+        }
+        
+        function carregarGlobalRanking() {
+            fetch(`/api/scores/ranking/${jogoSelecionado}`)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('global-tbody');
+                    tbody.innerHTML = '';
+                    
+                    if (!data.ranking || data.ranking.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="empty">Nenhum score registrado</td></tr>';
+                        return;
+                    }
+                    
+                    data.ranking.forEach((player, idx) => {
+                        if (!player.melhor_score) return;
+                        const row = `
+                            <tr>
+                                <td class="posicao">${idx + 1}${idx === 0 ? ' 👑' : ''}</td>
+                                <td>${player.username}</td>
+                                <td class="score">${player.melhor_score}</td>
+                                <td>${player.total_partidas || 0}</td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                })
+                .catch(e => console.error(e));
+        }
+        
+        function carregarPessoalStats() {
+            fetch(`/api/scores/pessoais/${usuario.usuario_id}/${jogoSelecionado}`, {
+                headers: { 'Authorization': `Bearer ${usuario.token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('personal-best').textContent = data.melhor_score;
+                document.getElementById('personal-total').textContent = data.total_partidas;
+                
+                if (data.scores.length > 0) {
+                    const media = Math.round(data.scores.reduce((sum, s) => sum + s.pontuacao, 0) / data.scores.length);
+                    document.getElementById('personal-avg').textContent = media;
+                    
+                    const tbody = document.getElementById('personal-tbody');
+                    tbody.innerHTML = '';
+                    data.scores.forEach(score => {
+                        const data_jogo = new Date(score.data_jogo).toLocaleDateString('pt-BR');
+                        const row = `
+                            <tr>
+                                <td>${data_jogo}</td>
+                                <td class="score">${score.pontuacao}</td>
+                                <td>${score.dificuldade_inicial}</td>
+                                <td>${score.dificuldade_final}</td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                } else {
+                    document.getElementById('personal-avg').textContent = '-';
+                    document.getElementById('personal-tbody').innerHTML = 
+                        '<tr><td colspan="4" class="empty">Nenhuma partida registrada</td></tr>';
+                }
+            })
+            .catch(e => console.error(e));
+        }
+        
+        function voltarAoMenu() {
+            window.location.href = '/menu';
+        }
+    </script>
+</body>
+</html>

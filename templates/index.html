@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Minigames Arcade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-box">
+            <h1>🎮 MINIGAMES ARCADE</h1>
+            <p class="subtitle">Jogue, Compita, Vença!</p>
+            
+            <!-- Abas de Login/Registro -->
+            <div class="auth-tabs">
+                <button class="tab-btn active" onclick="mudarAba('login')">🔑 Login</button>
+                <button class="tab-btn" onclick="mudarAba('registro')">📝 Registro</button>
+                <button class="tab-btn" onclick="mudarAba('recuperacao')">🔓 Recuperar Senha</button>
+            </div>
+            
+            <!-- Login -->
+            <div id="login-form" class="tab-content active">
+                <input type="text" id="login-username" placeholder="Username" maxlength="20">
+                <input type="password" id="login-senha" placeholder="Senha" maxlength="50">
+                <button onclick="fazerLogin()" class="btn-auth">Entrar</button>
+                <p><small onclick="mudarAba('recuperacao')" style="cursor: pointer; color: var(--primary); text-decoration: underline;">Esqueceu a senha?</small></p>
+                <p id="login-erro" class="erro"></p>
+            </div>
+            
+            <!-- Registro -->
+            <div id="registro-form" class="tab-content">
+                <input type="text" id="registro-username" placeholder="Escolha um username" maxlength="20">
+                
+                <div class="password-input-group">
+                    <input type="password" id="registro-senha" placeholder="Crie uma senha" maxlength="50">
+                    <button class="btn-show-password" onclick="togglePassword('registro-senha')">👁️</button>
+                </div>
+                
+                <div id="password-strength" class="password-strength">
+                    <div class="strength-bar">
+                        <div id="strength-meter" class="strength-meter"></div>
+                    </div>
+                    <p id="strength-text" class="strength-text"></p>
+                    <ul id="strength-requirements" class="strength-requirements"></ul>
+                </div>
+                
+                <input type="password" id="registro-confirma" placeholder="Confirme a senha" maxlength="50">
+                <button onclick="fazerRegistro()" class="btn-auth">Criar Conta</button>
+                <p id="registro-erro" class="erro"></p>
+            </div>
+
+            <!-- Recuperação de Senha -->
+            <div id="recuperacao-form" class="tab-content">
+                <div id="recuperacao-passo" class="recuperacao-passo">
+                    <div id="passo1" style="display: flex; flex-direction: column; gap: 15px;">
+                        <p style="font-size: 0.95em; color: #666;">Para recuperar uma senha, faça login como administrador (admin ou Rickstiller).</p>
+                        <input type="text" id="admin-username" placeholder="Admin username" maxlength="20">
+                        <input type="password" id="admin-senha" placeholder="Admin senha" maxlength="50">
+                        <button onclick="autenticarAdmin()" class="btn-auth">Autenticar como Admin</button>
+                        <p id="admin-erro" class="erro"></p>
+                    </div>
+
+                    <div id="passo2" style="display: none; flex-direction: column; gap: 15px;">
+                        <p style="font-size: 0.95em; color: #666;">Agora informe qual usuário terá a senha resetada.</p>
+                        <input type="text" id="usuario-alvo" placeholder="Username a resetar" maxlength="20">
+                        
+                        <div class="password-input-group">
+                            <input type="password" id="nova-senha" placeholder="Nova senha" maxlength="50">
+                            <button class="btn-show-password" onclick="togglePassword('nova-senha')">👁️</button>
+                        </div>
+                        
+                        <div id="password-strength-reset" class="password-strength">
+                            <div class="strength-bar">
+                                <div id="strength-meter-reset" class="strength-meter"></div>
+                            </div>
+                            <p id="strength-text-reset" class="strength-text"></p>
+                            <ul id="strength-requirements-reset" class="strength-requirements"></ul>
+                        </div>
+
+                        <button onclick="resetarSenhaAdmin()" class="btn-auth">Resetar Senha</button>
+                        <button onclick="voltarRecuperacao()" class="btn-secondary">Voltar</button>
+                        <p id="reset-erro" class="erro"></p>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="font-size: 0.9em; color: #666; cursor: pointer;" onclick="jogarComoGuest()">👻 Ou jogar como Guest</p>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+</html>

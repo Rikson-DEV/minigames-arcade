@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu - Minigames Arcade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="menu-page">
+    <div class="menu-container">
+        <div class="menu-header">
+            <h1>🎮 MINIGAMES ARCADE</h1>
+            <p id="user-info" class="user-info"></p>
+        </div>
+        
+        <div class="menu-content">
+            <h2>Escolha seu Jogo</h2>
+            
+            <div class="jogos-grid">
+                <!-- Snake -->
+                <div class="jogo-card" onclick="selecionarJogo('snake')">
+                    <div class="jogo-icon">🐍</div>
+                    <h3>Snake</h3>
+                    <p>Coma comida sem bater nas paredes!</p>
+                    <div class="best-score" id="best-snake">-</div>
+                </div>
+                
+                <!-- Pong -->
+                <div class="jogo-card" onclick="selecionarJogo('pong')">
+                    <div class="jogo-icon">🏓</div>
+                    <h3>Pong</h3>
+                    <p>Rebata a bola e vença o computador!</p>
+                    <div class="best-score" id="best-pong">-</div>
+                </div>
+                
+                <!-- Space Shooter -->
+                <div class="jogo-card" onclick="selecionarJogo('space-shooter')">
+                    <div class="jogo-icon">🚀</div>
+                    <h3>Space Shooter</h3>
+                    <p>Destrua os inimigos do espaço!</p>
+                    <div class="best-score" id="best-space">-</div>
+                </div>
+            </div>
+            
+            <div class="menu-buttons">
+                <button class="btn btn-secondary" onclick="irParaRanking()">🏆 Ver Ranking</button>
+                <button class="btn btn-danger" onclick="sair()">🚪 Sair</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) window.location.href = '/';
+            
+            document.getElementById('user-info').textContent = 
+                user.modo === 'guest' ? '👻 Jogando como Guest' : `📊 ${user.username}`;
+            
+            if (user.modo !== 'guest') {
+                carregarMelhorScore('snake', 'best-snake');
+                carregarMelhorScore('pong', 'best-pong');
+                carregarMelhorScore('space-shooter', 'best-space');
+            }
+        });
+        
+        function carregarMelhorScore(jogo, elementId) {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user.token) return;
+            
+            fetch(`/api/scores/pessoais/${user.usuario_id}/${jogo}`, {
+                headers: { 'Authorization': `Bearer ${user.token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById(elementId).textContent = 
+                    `🏆 Melhor: ${data.melhor_score} (${data.total_partidas} partidas)`;
+            })
+            .catch(() => {});
+        }
+        
+        function selecionarJogo(jogo) {
+            localStorage.setItem('jogo_selecionado', jogo);
+            window.location.href = '/games';
+        }
+        
+        function irParaRanking() {
+            window.location.href = '/ranking';
+        }
+        
+        function sair() {
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

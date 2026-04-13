@@ -1,0 +1,109 @@
+# ⚡ INÍCIO RÁPIDO - Minigames Arcade
+
+Copie e cole estes comandos no PowerShell para começar imediatamente!
+
+## 🚀 Execute ISTO AGORA:
+
+```powershell
+# Entrar na pasta
+cd "c:\Users\ricks\Documents\DEV\BACK-END\Python Codes\Minigames_App"
+
+# Instalar dependências (execute UMA ÚNICA VEZ)
+pip install -r requirements.txt
+
+# Iniciar servidor
+python app.py
+```
+
+## ✅ Se tudo funtar corretamente, você verá:
+
+```
+============================================================
+🎮 MINIGAMES ARCADE - Sistema de Jogos
+============================================================
+✓ Banco de dados criado/verificado
+✓ Servidor em http://localhost:5000
+✓ Pressione CTRL+C para parar
+============================================================
+```
+
+## 📱 Acesse seu navegador
+
+Abra: **http://localhost:5000**
+
+## 🎮 Pronto! Agora você pode:
+
+1. **Registrar** uma nova conta
+2. **Fazer Login** ou jogar como **Guest**
+3. Escolher entre **3 jogos** diferentes
+4. Escolher **nível de dificuldade**
+5. Ver seu **ranking** e **estatísticas**
+
+---
+
+## 🛑 Para Parar
+
+Pressione **CTRL + C** no PowerShell
+
+---
+
+## 📊 Testando os Dados
+
+Enquanto o servidor está rodando, abra outro PowerShell:
+
+```powershell
+cd "c:\Users\ricks\Documents\DEV\BACK-END\Python Codes\Minigames_App"
+
+# Ver todos os usuários
+sqlite3 minigames.db "SELECT username, data_criacao FROM usuarios;"
+
+# Ver todos os scores
+sqlite3 minigames.db "SELECT * FROM scores;"
+
+# Contar partidas
+sqlite3 minigames.db "SELECT COUNT(*) FROM scores;"
+
+# Sair
+.quit
+```
+
+---
+
+## 🐛 Se Algo der Errado
+
+**Erro: "Module not found"**
+```powershell
+pip install -r requirements.txt
+```
+
+**Erro: "Address already in use"**
+- Encontre o processo na porta 5000:
+```powershell
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+```
+
+**Erro: "Banco vazio"**
+- Jogue alguns jogos para registrar dados no banco
+
+---
+
+## 📦 Compilar para EXE (depois de testar)
+
+```powershell
+# Instalar PyInstaller
+pip install pyinstaller
+
+# Gerar EXE
+pyinstaller --onefile --windowed --name "MinigamesArcade" app.py
+
+# Copiar arquivos necessários para dist/
+# - templates/ (pasta inteira)
+# - static/ (pasta inteira)
+
+# Pronto! MinigamesArcade.exe estará em dist/
+```
+
+---
+
+**Diverte-se jog ndo! 🎮✨**

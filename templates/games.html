@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo - Minigames Arcade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="game-page">
+    <div class="game-container">
+        <div class="game-header">
+            <button class="btn-menu" onclick="sairDoJogo()">← Menu</button>
+            <h1 id="game-title">Carregando...</h1>
+            <div class="game-hud">
+                <div class="hud-item">
+                    <span>Pontuação:</span>
+                    <span id="score">0</span>
+                </div>
+                <div class="hud-item">
+                    <span>Dificuldade:</span>
+                    <span id="difficulty">1</span>
+                </div>
+                <div class="hud-item">
+                    <span>Vidas:</span>
+                    <span id="lives">3</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seletor de Dificuldade (antes de começar) -->
+        <div id="difficulty-selector" class="difficulty-selector">
+            <h2>Selecione o Nível de Dificuldade</h2>
+            <p>Quanto mais difícil, mais rápido a dificuldade progride!</p>
+            
+            <div class="difficulty-options">
+                <div class="diff-option" onclick="iniciarJogo(1)">
+                    <div class="diff-level">1️⃣ Fácil</div>
+                    <div class="diff-desc">Progressão lenta</div>
+                </div>
+                <div class="diff-option" onclick="iniciarJogo(2)">
+                    <div class="diff-level">2️⃣ Normal</div>
+                    <div class="diff-desc">Progressão moderada</div>
+                </div>
+                <div class="diff-option" onclick="iniciarJogo(3)">
+                    <div class="diff-level">3️⃣ Difícil</div>
+                    <div class="diff-desc">Progressão rápida</div>
+                </div>
+                <div class="diff-option" onclick="iniciarJogo(4)">
+                    <div class="diff-level">4️⃣ Insano</div>
+                    <div class="diff-desc">Progressão muito rápida</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Canvas do Jogo -->
+        <div id="game-area" class="game-area" style="display: none;">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        
+        <!-- Tela de Game Over -->
+        <div id="game-over-screen" class="overlay" style="display: none;">
+            <div class="game-over-box">
+                <h2>GAME OVER</h2>
+                <p id="final-score">Pontuação: 0</p>
+                <p id="final-difficulty">Dificuldade Final: 1</p>
+                <div class="buttons-group">
+                    <button class="btn" onclick="jogarNovamente()">Jogar Novamente</button>
+                    <button class="btn btn-secondary" onclick="sairDoJogo()">Voltar ao Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/games.js') }}"></script>
+    <script>
+        let jogoAtual;
+        let usuario = JSON.parse(localStorage.getItem('user'));
+        let dificuldadeInicial = 1;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const jogo = localStorage.getItem('jogo_selecionado');
+            if (!jogo) {
+                window.location.href = '/menu';
+                return;
+            }
+            
+            const nomeJogo = {
+                'snake': '🐍 Snake',
+                'pong': '🏓 Pong',
+                'space-shooter': '🚀 Space Shooter'
+            };
+            
+            document.getElementById('game-title').textContent = nomeJogo[jogo] || 'Jogo';
+        });
+        
+        function iniciarJogo(dificuldade) {
+            dificuldadeInicial = dificuldade;
+            document.getElementById('difficulty-selector').style.display = 'none';
+            document.getElementById('game-area').style.display = 'block';
+            
+            const jogo = localStorage.getItem('jogo_selecionado');
+            
+            if (jogo === 'snake') {
+                jogoAtual = new Snake(dificuldade);
+            } else if (jogo === 'pong') {
+                jogoAtual = new Pong(dificuldade);
+            } else if (jogo === 'space-shooter') {
+                jogoAtual = new SpaceShooter(dificuldade);
+            }
+            
+            jogoAtual.start();
+        }
+        
+        function jogarNovamente() {
+            // Reset completo
+            jogoAtual = null;
+            dificuldadeInicial = 1;
+            document.getElementById('game-over-screen').style.display = 'none';
+            document.getElementById('difficulty-selector').style.display = 'block';
+            document.getElementById('game-area').style.display = 'none';
+            
+            // Limpar canvas
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function sairDoJogo() {
+            if (jogoAtual && jogoAtual.rodando) {
+                if (confirm('Descartar partida?')) {
+                    jogoAtual.parar();
+                    window.location.href = '/menu';
+                }
+            } else {
+                window.location.href = '/menu';
+            }
+        }
+        
+        function encerrarJogo(pontuacao, dificuldadeFinal) {
+            jogoAtual.parar();
+            
+            document.getElementById('final-score').textContent = `Pontuação: ${pontuacao}`;
+            document.getElementById('final-difficulty').textContent = `Dificuldade Final: ${dificuldadeFinal}`;
+            document.getElementById('game-over-screen').style.display = 'flex';
+            
+            // Salvar score se não for guest
+            if (usuario && usuario.token) {
+                const jogo = localStorage.getItem('jogo_selecionado');
+                fetch('/api/scores/salvar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: usuario.token,
+                        jogo: jogo,
+                        pontuacao: pontuacao,
+                        dificuldade_inicial: dificuldadeInicial,
+                        dificuldade_final: dificuldadeFinal
+                    })
+                }).catch(e => console.error(e));
+            }
+        }
+    </script>
+</body>
+</html>
