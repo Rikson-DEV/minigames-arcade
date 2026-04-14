@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import os
 import secrets
 from datetime import datetime, timedelta
@@ -10,54 +11,70 @@ import re
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
 
-# Caminho do banco de dados
-DB_PATH = os.path.join(os.path.dirname(__file__), "minigames.db")
+# ==================== POSTGRESQL CONNECTION ====================
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if not DATABASE_URL:
+    # Para desenvolvimento local, use o arquivo .env
+    print("⚠️ AVISO: DATABASE_URL não encontrada nas variáveis de ambiente")
+    print("   Configure com: export DATABASE_URL='seu_url_aqui'")
+    DATABASE_URL = None
+
+def get_db():
+    """Retorna conexão com banco de dados PostgreSQL"""
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL não foi configurada!")
+    try:
+        conexao = psycopg2.connect(DATABASE_URL)
+        return conexao
+    except Exception as e:
+        print(f"❌ Erro ao conectar PostgreSQL: {e}")
+        raise
+
+def get_cursor():
+    """Retorna cursor com RealDictCursor para resultados como dicts"""
+    conexao = get_db()
+    cursor = conexao.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    return conexao, cursor
 
 def criar_banco_dados():
-    """Cria o banco de dados com as tabelas necessárias"""
+    """Cria as tabelas necessárias no PostgreSQL"""
     try:
-        conexao = sqlite3.connect(DB_PATH)
+        conexao = get_db()
         cursor = conexao.cursor()
         
         # Tabela de usuários
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS usuarios (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
                 senha TEXT NOT NULL,
-                tipo_usuario TEXT DEFAULT 'comum',
+                tipo_usuario VARCHAR(20) DEFAULT 'comum',
                 data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
-        # Adicionar coluna tipo_usuario se não existir (migration)
-        try:
-            cursor.execute("ALTER TABLE usuarios ADD COLUMN tipo_usuario TEXT DEFAULT 'comum'")
-        except sqlite3.OperationalError:
-            pass  # Coluna já existe
-        
         # Tabela de scores
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS scores (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                usuario_id INTEGER,
-                jogo TEXT NOT NULL,
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                jogo VARCHAR(50) NOT NULL,
                 pontuacao INTEGER NOT NULL,
                 dificuldade_inicial INTEGER NOT NULL,
                 dificuldade_final INTEGER NOT NULL,
-                data_jogo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                data_jogo TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
         conexao.commit()
-        print(f"✓ Banco de dados criado em: {DB_PATH}")
+        print(f"✓ Tabelas PostgreSQL criadas")
         
         # Criar/atualizar usuários admin
         _criar_admins_padrao(conexao, cursor)
         
         conexao.close()
-        print("✓ Tabelas criadas e admins configurados")
+        print("✓ Banco de dados PostgreSQL configurado com sucesso")
     except Exception as e:
         print(f"❌ ERRO ao criar banco de dados: {e}")
         raise
@@ -73,14 +90,14 @@ def _criar_admins_padrao(conexao, cursor):
         for username, senha in admins:
             try:
                 # Verificar se já existe
-                cursor.execute("SELECT id, tipo_usuario FROM usuarios WHERE username = ?", (username,))
+                cursor.execute("SELECT id, tipo_usuario FROM usuarios WHERE username = %s", (username,))
                 usuario = cursor.fetchone()
                 
                 if usuario:
                     # Atualizar para admin se não for
                     if usuario[1] != 'admin':
                         cursor.execute(
-                            "UPDATE usuarios SET tipo_usuario = ? WHERE username = ?",
+                            "UPDATE usuarios SET tipo_usuario = %s WHERE username = %s",
                             ('admin', username)
                         )
                         conexao.commit()
@@ -88,7 +105,7 @@ def _criar_admins_padrao(conexao, cursor):
                 else:
                     # Criar novo admin
                     cursor.execute(
-                        "INSERT INTO usuarios (username, senha, tipo_usuario) VALUES (?, ?, ?)",
+                        "INSERT INTO usuarios (username, senha, tipo_usuario) VALUES (%s, %s, %s)",
                         (username, generate_password_hash(senha), 'admin')
                     )
                     conexao.commit()
@@ -97,12 +114,6 @@ def _criar_admins_padrao(conexao, cursor):
                 print(f"❌ Erro ao processar admin {username}: {e}")
     except Exception as e:
         print(f"❌ Erro ao criar admins padrão: {e}")
-
-def get_db():
-    """Retorna conexão com banco de dados"""
-    conexao = sqlite3.connect(DB_PATH)
-    conexao.row_factory = sqlite3.Row
-    return conexao
 
 def validar_forca_senha(senha):
     """
@@ -150,10 +161,9 @@ def validar_forca_senha(senha):
 
 # ============ INICIALIZAR BANCO DE DADOS ============
 def inicializar_banco():
-    """Inicializa banco de dados na primeira execução"""
+    """Inicializa banco de dados PostgreSQL na primeira execução"""
     try:
-        if not os.path.exists(DB_PATH):
-            print("🗄️ Criando banco de dados...")
+        print("🗄️ Conectando ao PostgreSQL...")
         criar_banco_dados()
     except Exception as e:
         print(f"❌ Erro ao inicializar banco: {e}")
@@ -200,16 +210,15 @@ def register():
                 "forca": forca
             }), 400
         
-        conexao = get_db()
-        cursor = conexao.cursor()
+        conexao, cursor = get_cursor()
         
         try:
             cursor.execute(
-                "INSERT INTO usuarios (username, senha, tipo_usuario) VALUES (?, ?, ?)",
+                "INSERT INTO usuarios (username, senha, tipo_usuario) VALUES (%s, %s, %s) RETURNING id",
                 (username, generate_password_hash(senha), 'comum')
             )
+            usuario_id = cursor.fetchone()['id']
             conexao.commit()
-            usuario_id = cursor.lastrowid
             conexao.close()
             
             token = jwt.encode(
@@ -224,7 +233,7 @@ def register():
                 "usuario_id": usuario_id,
                 "username": username
             })
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
             conexao.close()
             return jsonify({"erro": "Username já existe"}), 400
     except Exception as e:
@@ -238,9 +247,8 @@ def login():
         username = data.get('username', '').strip()
         senha = data.get('senha', '').strip()
         
-        conexao = get_db()
-        cursor = conexao.cursor()
-        cursor.execute("SELECT id, senha FROM usuarios WHERE username = ?", (username,))
+        conexao, cursor = get_cursor()
+        cursor.execute("SELECT id, senha FROM usuarios WHERE username = %s", (username,))
         usuario = cursor.fetchone()
         conexao.close()
         
@@ -280,10 +288,9 @@ def admin_login():
         username = data.get('username', '').strip()
         senha = data.get('senha', '').strip()
         
-        conexao = get_db()
-        cursor = conexao.cursor()
+        conexao, cursor = get_cursor()
         cursor.execute(
-            "SELECT id, senha, tipo_usuario FROM usuarios WHERE username = ?",
+            "SELECT id, senha, tipo_usuario FROM usuarios WHERE username = %s",
             (username,)
         )
         usuario = cursor.fetchone()
@@ -340,11 +347,10 @@ def resetar_senha():
                 "forca": forca
             }), 400
         
-        conexao = get_db()
-        cursor = conexao.cursor()
+        conexao, cursor = get_cursor()
         
         # Verificar se usuário existe
-        cursor.execute("SELECT id FROM usuarios WHERE username = ?", (username_alvo,))
+        cursor.execute("SELECT id FROM usuarios WHERE username = %s", (username_alvo,))
         usuario = cursor.fetchone()
         
         if not usuario:
@@ -353,7 +359,7 @@ def resetar_senha():
         
         # Atualizar senha
         cursor.execute(
-            "UPDATE usuarios SET senha = ? WHERE username = ?",
+            "UPDATE usuarios SET senha = %s WHERE username = %s",
             (generate_password_hash(nova_senha), username_alvo)
         )
         conexao.commit()
@@ -387,11 +393,10 @@ def salvar_score():
         if not all([jogo, type(pontuacao) == int, dificuldade_inicial, dificuldade_final]):
             return jsonify({"erro": "Dados incompletos"}), 400
         
-        conexao = get_db()
-        cursor = conexao.cursor()
+        conexao, cursor = get_cursor()
         cursor.execute(
             """INSERT INTO scores (usuario_id, jogo, pontuacao, dificuldade_inicial, dificuldade_final)
-               VALUES (?, ?, ?, ?, ?)""",
+               VALUES (%s, %s, %s, %s, %s)""",
             (usuario_id, jogo, pontuacao, dificuldade_inicial, dificuldade_final)
         )
         conexao.commit()
@@ -409,11 +414,10 @@ def get_scores_pessoais(usuario_id, jogo):
         if verificar_token(token) != usuario_id:
             return jsonify({"erro": "Não autorizado"}), 401
         
-        conexao = get_db()
-        cursor = conexao.cursor()
+        conexao, cursor = get_cursor()
         cursor.execute(
             """SELECT pontuacao, dificuldade_inicial, dificuldade_final, data_jogo
-               FROM scores WHERE usuario_id = ? AND jogo = ?
+               FROM scores WHERE usuario_id = %s AND jogo = %s
                ORDER BY pontuacao DESC LIMIT 10""",
             (usuario_id, jogo)
         )
@@ -421,7 +425,7 @@ def get_scores_pessoais(usuario_id, jogo):
         
         # Melhor score
         cursor.execute(
-            "SELECT MAX(pontuacao) as melhor FROM scores WHERE usuario_id = ? AND jogo = ?",
+            "SELECT MAX(pontuacao) as melhor FROM scores WHERE usuario_id = %s AND jogo = %s",
             (usuario_id, jogo)
         )
         melhor = cursor.fetchone()['melhor'] or 0
@@ -440,12 +444,11 @@ def get_scores_pessoais(usuario_id, jogo):
 def get_ranking_global(jogo):
     """Retorna ranking global de um jogo"""
     try:
-        conexao = get_db()
-        cursor = conexao.cursor()
+        conexao, cursor = get_cursor()
         cursor.execute(
             """SELECT u.username, MAX(s.pontuacao) as melhor_score, COUNT(s.id) as total_partidas
                FROM usuarios u
-               LEFT JOIN scores s ON u.id = s.usuario_id AND s.jogo = ?
+               LEFT JOIN scores s ON u.id = s.usuario_id AND s.jogo = %s
                GROUP BY u.id, u.username
                ORDER BY melhor_score DESC
                LIMIT 100""",

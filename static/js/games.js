@@ -38,7 +38,7 @@ class BaseGame {
     }
     
     initializeTouchControls() {
-        """Adiciona suporte para touch em mobile"""
+        // Adiciona suporte para touch em mobile
         if (this.isMobile) {
             this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), false);
             this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), false);
@@ -58,7 +58,7 @@ class BaseGame {
     }
     
     handleSwipe() {
-        """Detecta direção do swipe - Implementado em subclasses"""
+        // Detecta direção do swipe - Implementado em subclasses
         // Será sobrescrito em Snake, Pong, SpaceShooter
     }
     
@@ -99,7 +99,7 @@ class Snake extends BaseGame {
     }
     
     handleSwipe() {
-        """Detecta swipe no mobile e muda direção do snake"""
+        // Detecta swipe no mobile e muda direção do snake
         const diferencaX = this.touchEndX - this.touchStartX;
         const diferencaY = this.touchEndY - this.touchStartY;
         const minSwipe = 50; // Distância mínima para considerar um swipe
@@ -272,15 +272,15 @@ class Pong extends BaseGame {
         
         document.addEventListener('mousemove', (e) => this.atualizarMouse(e));
         document.addEventListener('keydown', (e) => {
-            this.teclasPresinoadas[e.key] = true;
+            this.teclasPresinoadas[e.key.toLowerCase()] = true;
         });
         document.addEventListener('keyup', (e) => {
-            this.teclasPresinoadas[e.key] = false;
+            this.teclasPresinoadas[e.key.toLowerCase()] = false;
         });
     }
     
     handleSwipe() {
-        """Detecta swipe no mobile e move paddle"""
+        // Detecta swipe no mobile e move paddle
         const diferencaY = this.touchEndY - this.touchStartY;
         const minSwipe = 30;
         
@@ -449,16 +449,16 @@ class SpaceShooter extends BaseGame {
         this.teclasPresinoadas = {};
         
         document.addEventListener('keydown', (e) => {
-            this.teclasPresinoadas[e.key] = true;
+            this.teclasPresinoadas[e.key.toLowerCase()] = true;
             if (e.code === 'Space') this.atirar(e);
         });
         document.addEventListener('keyup', (e) => {
-            this.teclasPresinoadas[e.key] = false;
+            this.teclasPresinoadas[e.key.toLowerCase()] = false;
         });
     }
     
     handleSwipe() {
-        """Detecta swipe no mobile e move nave"""
+        // Detecta swipe no mobile e move nave
         const diferencaX = this.touchEndX - this.touchStartX;
         const minSwipe = 50;
         
